@@ -13952,6 +13952,42 @@
       })();
       return true;
     }
+  
+  // Handle start element picker (simple, reliable path)
+  if (messageType === 'start_element_picker') {
+    (async () => {
+      try {
+        if (!window.__ST_SIMPLE_PICKER) {
+          if (typeof window.StepThreeElementPicker === 'function') {
+            window.__ST_SIMPLE_PICKER = new window.StepThreeElementPicker();
+          }
+        }
+        if (!window.__ST_SIMPLE_PICKER) {
+          sendResponse({ success: false, error: 'Element picker not available' });
+          return;
+        }
+        const started = await window.__ST_SIMPLE_PICKER.startPicking();
+        sendResponse({ success: !!started });
+      } catch (error) {
+        console.error('❌ start_element_picker error:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    return true;
+  }
+  
+  // Handle stop element picker (simple, reliable path)
+  if (messageType === 'stop_element_picker') {
+    try {
+      const picker = window.__ST_SIMPLE_PICKER;
+      const ok = picker && typeof picker.stop === 'function' ? picker.stop() : false;
+      sendResponse({ success: !!ok });
+    } catch (error) {
+      console.error('❌ stop_element_picker error:', error);
+      sendResponse({ success: false, error: error.message });
+    }
+    return true;
+  }
     
     // Handle toggleSelector
     if (messageType === 'toggleSelector') {
