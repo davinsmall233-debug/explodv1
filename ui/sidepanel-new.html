@@ -379,9 +379,42 @@
             <div class="setting-item">
               <div class="setting-label">
                 <span class="setting-name">Filename mask</span>
-                <small>Pattern for naming downloaded files. Available: *name*, *ext*, *domain*, *timestamp*</small>
+                <small>Pattern for naming downloaded files. Click on patterns below to insert them.</small>
               </div>
-              <input type="text" id="filenameMaskInput" class="input-control" value="*name*.*ext*" placeholder="*name*.*ext*" title="Use *name* for filename, *ext* for extension, *domain* for site name, *timestamp* for date/time">
+              <input type="text" id="filenameMaskInput" class="input-control" value="*name*.*ext*" placeholder="*name*.*ext*">
+              <div class="mask-patterns">
+                <div class="pattern-group">
+                  <h4>Basic Patterns</h4>
+                  <div class="pattern-tags">
+                    <span class="pattern-tag" data-pattern="*name*" title="The original filename without its extension (e.g., 'w' from w.jpg)">*name*</span>
+                    <span class="pattern-tag" data-pattern="*ext*" title="The file's extension (e.g., 'jpg')">*ext*</span>
+                    <span class="pattern-tag" data-pattern="*domain*" title="The website's main domain (e.g., 'imago-images.com')">*domain*</span>
+                    <span class="pattern-tag" data-pattern="*url*" title="The full domain, including subdomains (e.g., 'www.imago-images.com')">*url*</span>
+                    <span class="pattern-tag" data-pattern="*subdirs*" title="The entire directory path from the URL (e.g., 'bild/st/0479945706/')">*subdirs*</span>
+                  </div>
+                </div>
+                <div class="pattern-group">
+                  <h4>URL Segments</h4>
+                  <div class="pattern-tags">
+                    <span class="pattern-tag" data-pattern="*segment[1]*" title="Extracts the 1st part of the URL path, split by slashes (/)">*segment[1]*</span>
+                    <span class="pattern-tag" data-pattern="*segment[2]*" title="Extracts the 2nd part of the URL path, split by slashes (/)">*segment[2]*</span>
+                    <span class="pattern-tag" data-pattern="*segment[3]*" title="Extracts the 3rd part of the URL path, split by slashes (/)">*segment[3]*</span>
+                    <span class="pattern-tag" data-pattern="*segment[4]*" title="Extracts the 4th part of the URL path, split by slashes (/)">*segment[4]*</span>
+                  </div>
+                </div>
+                <div class="pattern-group">
+                  <h4>Numbering & Time</h4>
+                  <div class="pattern-tags">
+                    <span class="pattern-tag" data-pattern="*num*" title="An incremental number that increases with each new download session, great for avoiding duplicate filenames">*num*</span>
+                    <span class="pattern-tag" data-pattern="*y*" title="Year (e.g., '2025')">*y*</span>
+                    <span class="pattern-tag" data-pattern="*m*" title="Month (e.g., '10')">*m*</span>
+                    <span class="pattern-tag" data-pattern="*d*" title="Day (e.g., '19')">*d*</span>
+                    <span class="pattern-tag" data-pattern="*hh*" title="Hours (e.g., '23')">*hh*</span>
+                    <span class="pattern-tag" data-pattern="*mm*" title="Minutes (e.g., '30')">*mm*</span>
+                    <span class="pattern-tag" data-pattern="*ss*" title="Seconds (e.g., '45')">*ss*</span>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="setting-item">
               <div class="setting-label">

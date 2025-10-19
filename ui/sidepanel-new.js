@@ -516,6 +516,9 @@ class UnifiedSidepanel {
 
     // Footer
     this.addClickListener('helpBtn', () => this.showHelp());
+
+    // Filename mask pattern tags
+    this.setupPatternTagListeners();
   }
 
   setupToggleListeners() {
@@ -580,6 +583,46 @@ class UnifiedSidepanel {
     const element = document.getElementById(id);
     if (element) {
       element.addEventListener('change', handler);
+    }
+  }
+
+  setupPatternTagListeners() {
+    // Add click listeners to all pattern tags
+    const patternTags = document.querySelectorAll('.pattern-tag');
+    patternTags.forEach(tag => {
+      tag.addEventListener('click', (e) => {
+        e.preventDefault();
+        const pattern = tag.getAttribute('data-pattern');
+        if (pattern) {
+          this.insertPatternIntoMask(pattern);
+        }
+      });
+    });
+  }
+
+  insertPatternIntoMask(pattern) {
+    const maskInput = document.getElementById('filenameMaskInput');
+    if (maskInput) {
+      const currentValue = maskInput.value;
+      const cursorPos = maskInput.selectionStart || currentValue.length;
+      
+      // Insert the pattern at cursor position
+      const newValue = currentValue.slice(0, cursorPos) + pattern + currentValue.slice(cursorPos);
+      maskInput.value = newValue;
+      
+      // Update the setting
+      this.settings.filenameMask = newValue;
+      
+      // Set cursor position after the inserted pattern
+      const newCursorPos = cursorPos + pattern.length;
+      maskInput.setSelectionRange(newCursorPos, newCursorPos);
+      maskInput.focus();
+      
+      // Show a brief visual feedback
+      maskInput.style.backgroundColor = '#e8f5e8';
+      setTimeout(() => {
+        maskInput.style.backgroundColor = '';
+      }, 300);
     }
   }
 
