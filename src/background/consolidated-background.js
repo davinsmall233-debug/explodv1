@@ -2511,6 +2511,22 @@ function applyMask(mask, ctx) {
   replace('session', sessionCounter);
   replace('global', globalCounter);
 
+  // Process *segment[n]* tags
+  out = out.replace(/\*segment\[(\d+)\]\*/gi, (match, segmentIndex) => {
+    const index = parseInt(segmentIndex, 10);
+    if (ctx.url) {
+      try {
+        const urlObj = new URL(ctx.url);
+        const pathSegments = urlObj.pathname.split('/').filter(Boolean);
+        const segment = pathSegments[index - 1] || '';
+        return sanitizeFilename(segment);
+      } catch {
+        return '';
+      }
+    }
+    return '';
+  });
+
   return out;
 }
 
