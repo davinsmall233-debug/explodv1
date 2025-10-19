@@ -103,7 +103,11 @@ class UnifiedSidepanel {
     this.toastQueue = [];
     this.toastIdCounter = 0;
 
+    // Element picker state
+    this.elementPickerActive = false;
+
     this.init();
+    this.setupCleanupHandlers();
   }
 
   async init() {
@@ -500,6 +504,7 @@ class UnifiedSidepanel {
 
     // Element picker for next selector
     this.addClickListener('pickNextSelectorBtn', () => this.handlePickNextSelector());
+    this.addClickListener('cancelElementPickerBtn', () => this.cancelElementPicker());
 
     // Settings - Actions
     this.addClickListener('resetSettingsBtn', () => this.resetSettings());
@@ -703,7 +708,8 @@ class UnifiedSidepanel {
   async handlePickNextSelector() {
     try {
       this.logActivity('Starting element picker for Next button...');
-      this.showToast('Click the Next/Load More button on the page', 'info');
+      this.showToast('Click the Next/Load More button on the page (Press ESC to cancel)', 'info');
+      this.updateElementPickerUI(true);
 
       if (!this.currentTab) {
         await this.getCurrentTab();
@@ -713,28 +719,80 @@ class UnifiedSidepanel {
       if (!chrome?.tabs?.sendMessage) {
         throw new Error('Chrome tabs API not available');
       }
-      await chrome.tabs.sendMessage(this.currentTab.id, {
-        action: 'start_element_picker',
-        source: 'sidepanel',
-        requestId: `pick_next_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
-      });
 
-      // Listen for element_selected from content script
+      // Send message with proper error handling and retry mechanism
+      let pickerStarted = false;
+      let retryCount = 0;
+      const maxRetries = 2;
+      
+      while (!pickerStarted && retryCount <= maxRetries) {
+        try {
+          const response = await chrome.tabs.sendMessage(this.currentTab.id, {
+            action: 'start_element_picker',
+            source: 'sidepanel',
+            requestId: `pick_next_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+          });
+          
+          if (response && !response.success) {
+            throw new Error(response.error || 'Failed to start element picker');
+          }
+          pickerStarted = true;
+          this.elementPickerActive = true;
+          this.logActivity('Element picker started successfully');
+        } catch (error) {
+          retryCount++;
+          
+          if (error.message.includes('Could not establish connection') || 
+              error.message.includes('Receiving end does not exist')) {
+            if (retryCount <= maxRetries) {
+              this.logActivity(`Content script not ready, retrying... (${retryCount}/${maxRetries})`);
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+              continue;
+            } else {
+              throw new Error('Content script not loaded. Please refresh the page and try again.');
+            }
+          }
+          if (error.message.includes('The message port closed')) {
+            throw new Error('Page connection lost. Please refresh the page and try again.');
+          }
+          throw error;
+        }
+      }
+
+      // Listen for element_selected from content script with improved error handling
       const selector = await new Promise((resolve, reject) => {
+        let timeoutWarningShown = false;
+        
         const timeout = setTimeout(() => {
           chrome.runtime?.onMessage?.removeListener(listener);
-          reject(new Error('Element selection timed out'));
-        }, 30000);
+          reject(new Error('Element selection timed out. Please try clicking an element within 15 seconds.'));
+        }, 15000); // Reduced timeout from 30s to 15s
+        
+        // Show warning at 10 seconds
+        const warningTimeout = setTimeout(() => {
+          if (!timeoutWarningShown) {
+            this.showToast('Please click an element soon - timeout in 5 seconds', 'warning');
+            timeoutWarningShown = true;
+          }
+        }, 10000);
 
-        const listener = (message) => {
+        const listener = (message, sender, sendResponse) => {
           try {
+            // Only process messages from the current tab
+            if (sender.tab && sender.tab.id !== this.currentTab.id) {
+              return;
+            }
+
             const action = message?.action || message?.type;
             if (action === 'element_selected' && message?.selector) {
               clearTimeout(timeout);
+              clearTimeout(warningTimeout);
               chrome.runtime?.onMessage?.removeListener(listener);
               resolve(message.selector);
             }
-          } catch {}
+          } catch (error) {
+            console.error('Error in element selection listener:', error);
+          }
         };
 
         if (chrome?.runtime?.onMessage) {
@@ -750,6 +808,7 @@ class UnifiedSidepanel {
       this.updateInput('nextSelectorInput', selector);
       this.showToast('Next button selector set', 'success');
       this.logActivity(`Next selector set: ${selector}`);
+      this.elementPickerActive = false;
 
       // Persist settings
       await this.saveSettings();
@@ -757,7 +816,73 @@ class UnifiedSidepanel {
       console.error('Pick Next selector error:', error);
       this.showToast(`Failed to pick element: ${error.message}`, 'error');
       this.logActivity(`Pick Next selector failed: ${error.message}`);
+      
+      // If picker was started but failed, try to stop it
+      if (this.currentTab && chrome?.tabs?.sendMessage) {
+        try {
+          await chrome.tabs.sendMessage(this.currentTab.id, {
+            action: 'stop_element_picker'
+          });
+        } catch (stopError) {
+          console.warn('Failed to stop element picker:', stopError);
+        }
+      }
+    } finally {
+      // Clean up any pending timeouts or listeners
+      this.cleanupElementPicker();
     }
+  }
+
+  cancelElementPicker() {
+    if (this.elementPickerActive) {
+      this.cleanupElementPicker();
+      this.showToast('Element picker cancelled', 'info');
+      this.logActivity('Element picker cancelled by user');
+      this.updateElementPickerUI(false);
+    }
+  }
+
+  updateElementPickerUI(isActive) {
+    const pickBtn = document.getElementById('pickNextSelectorBtn');
+    const cancelBtn = document.getElementById('cancelElementPickerBtn');
+    
+    if (pickBtn) {
+      pickBtn.disabled = isActive;
+      pickBtn.textContent = isActive ? '⏳ Picking...' : '🎯 Pick';
+    }
+    
+    if (cancelBtn) {
+      cancelBtn.style.display = isActive ? 'inline-block' : 'none';
+    }
+  }
+
+  cleanupElementPicker() {
+    // This method can be called to clean up any pending element picker state
+    if (this.elementPickerActive && this.currentTab && chrome?.tabs?.sendMessage) {
+      try {
+        chrome.tabs.sendMessage(this.currentTab.id, {
+          action: 'stop_element_picker'
+        });
+        this.elementPickerActive = false;
+        this.updateElementPickerUI(false);
+      } catch (error) {
+        console.warn('Failed to stop element picker during cleanup:', error);
+      }
+    }
+  }
+
+  setupCleanupHandlers() {
+    // Clean up when the sidepanel is closed or page changes
+    window.addEventListener('beforeunload', () => {
+      this.cleanupElementPicker();
+    });
+
+    // Clean up when the page visibility changes (user switches tabs)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        this.cleanupElementPicker();
+      }
+    });
   }
 
   openDebugPanel() {
