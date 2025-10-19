@@ -1085,3 +1085,59 @@ details.settings-section[open] .chevron {
   border-top-color: var(--text-primary);
   z-index: 1000;
 }
+/* UI fixes: variables, layout grid, and overlap prevention */
+:root {
+  --primary-color: #667eea;
+  --primary-hover: #5568d3;
+  --secondary-color: #95a5a6;
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --danger-color: #e74c3c;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-card: #ffffff;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666;
+  --text-muted: #999;
+  --border-color: #e0e0e0;
+  --border-radius: 8px;
+  --border-radius-sm: 6px;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Ensure input groups don't collapse */
+.input-with-action { width: 100%; flex-wrap: nowrap; }
+
+/* Prevent label/input overlap with a clear two-column grid */
+.setting-item {
+  display: grid;
+  grid-template-columns: 1fr minmax(200px, 240px);
+  align-items: start;
+  gap: 8px 12px;
+}
+.setting-label { grid-column: 1; }
+.setting-label small { word-break: break-word; overflow-wrap: anywhere; }
+.setting-item .toggle-switch,
+.setting-item .input-control,
+.setting-item .select-control,
+.setting-item .input-with-action { grid-column: 2; width: 100%; }
+
+@media (max-width: 420px) {
+  .setting-item { grid-template-columns: 1fr; }
+  .setting-item .toggle-switch,
+  .setting-item .input-control,
+  .setting-item .select-control,
+  .setting-item .input-with-action { grid-column: 1; }
+}
+
+/* Better category layout for checkboxes */
+@media (min-width: 380px) {
+  .format-checkboxes, .field-checkboxes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+  }
+}
