@@ -4611,6 +4611,7 @@ if (!window.StepThreeElementPicker) {
       this.isActive = false;
       this.highlightedElement = null;
       this.overlay = null;
+      this.timeoutId = null;
       this.handlers = {
         mouseover: this.handleMouseOver.bind(this),
         click: this.handleClick.bind(this),
@@ -4628,6 +4629,14 @@ if (!window.StepThreeElementPicker) {
       this.createOverlay();
       this.attachEventListeners();
       
+      // Set a timeout to automatically stop the picker after 30 seconds
+      this.timeoutId = setTimeout(() => {
+        if (this.isActive) {
+          console.warn('Element picker timed out - stopping automatically');
+          this.stop();
+        }
+      }, 30000);
+      
       console.log('✅ Element picker started - click any element to select');
       return true;
     }
@@ -4638,6 +4647,13 @@ if (!window.StepThreeElementPicker) {
       }
 
       this.isActive = false;
+      
+      // Clear timeout if it exists
+      if (this.timeoutId) {
+        clearTimeout(this.timeoutId);
+        this.timeoutId = null;
+      }
+      
       this.removeOverlay();
       this.detachEventListeners();
       this.clearHighlight();
@@ -4732,18 +4748,30 @@ if (!window.StepThreeElementPicker) {
       
       console.log('🎯 Element selected:', { element, selector });
       
-      // Send selection back to extension
+      // Send selection back to extension with error handling
       if (typeof chrome !== 'undefined' && chrome.runtime) {
-        chrome.runtime.sendMessage({
-          action: 'element_selected',
-          selector: selector,
-          element: {
-            tagName: element.tagName,
-            className: element.className,
-            id: element.id,
-            textContent: element.textContent?.substring(0, 100)
-          }
-        });
+        try {
+          chrome.runtime.sendMessage({
+            action: 'element_selected',
+            selector: selector,
+            element: {
+              tagName: element.tagName,
+              className: element.className,
+              id: element.id,
+              textContent: element.textContent?.substring(0, 100)
+            }
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.error('Failed to send element_selected message:', chrome.runtime.lastError);
+            } else {
+              console.log('✅ Element selection message sent successfully');
+            }
+          });
+        } catch (error) {
+          console.error('Error sending element_selected message:', error);
+        }
+      } else {
+        console.error('Chrome runtime not available for sending element_selected message');
       }
       
       this.stop();
